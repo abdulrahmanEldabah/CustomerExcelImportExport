@@ -1,0 +1,87 @@
+﻿@page "/"
+@inject WebScraperService WebScraperService
+@inject DatabaseService DatabaseService
+@inject IJSRuntime JSRuntime
+
+<h3>Collected Links</h3>
+<div>
+    <InputText @bind-Value="inputUrl" placeholder="Enter URL" />
+    <button @onclick="FetchAndSaveLinks">Fetch Links</button>
+</div>
+
+<ul>
+    @foreach (var link in uniqueLinks)
+    {
+        <li>
+            <a href="@link" target="_blank">@link</a>
+        </li>
+    }
+</ul>
+
+@code {
+    private HashSet<string> links = new(); // Use HashSet to store unique links
+    private List<string> uniqueLinks = new(); // List to display unique links
+    private string inputUrl = string.Empty;
+    private int maxDepth = 2; // Maximum recursion depth to avoid infinite loops
+
+    private async Task FetchAndSaveLinks()
+    {
+        if (string.IsNullOrEmpty(inputUrl))
+        {
+            return; // Don't proceed if the URL is empty
+        }
+
+        await FetchAndSaveLinksRecursive(inputUrl, 0);
+        uniqueLinks = links.ToList(); // Convert HashSet to List for display
+    }
+
+    private async Task FetchAndSaveLinksRecursive(string url, int depth)
+    {
+        if (depth > maxDepth || links.Contains(url))
+        {
+            return; // Stop recursion if maximum depth is reached or link already processed
+        }
+
+        if (!IsValidHttpUrl(url))
+        {
+            return; // Skip non-HTTP/HTTPS URLs
+        }
+
+        try
+        {
+            links.Add(url);
+            DatabaseService.SaveLink(url);
+
+            var html = await WebScraperService.FetchHtmlAsync(url);
+            var document = WebScraperService.ParseHtml(html);
+            var extractedLinks = WebScraperService.ExtractLinks(document);
+
+            foreach (var link in extractedLinks)
+            {
+                string fullLink = ConstructLink(link, url);
+                await FetchAndSaveLinksRecursive(fullLink, depth + 1);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to fetch HTML from {url}: {ex.Message}");
+        }
+    }
+
+    private bool IsValidHttpUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out Uri uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
+
+    private string ConstructLink(string link, string baseUrl)
+    {
+        // Check if link is a complete URL or a relative path
+        if (!Uri.TryCreate(link, UriKind.Absolute, out Uri uri))
+        {
+            // Combine baseUrl with the relative link
+            uri = new Uri(new Uri(baseUrl), link);
+        }
+
+        return uri.ToString();
+    }
+}
