@@ -1,4 +1,5 @@
-﻿@page "/"
+﻿@namespace WebScraping
+@page "/"
 @inject HttpClient HttpClient
 
 <h3>Collected Links</h3>
@@ -38,16 +39,40 @@
 }
 
 <ul class="list-group mt-3">
-    @foreach (var link in uniqueLinks)
+    @foreach (var data in scrapedDataList)
     {
         <li class="list-group-item">
-            <a href="@link" target="_blank">@link</a>
+            <strong>URL:</strong> <a href="@data.Url" target="_blank">@data.Url</a>
+            @if (data.Emails.Any())
+            {
+                <div>
+                    <strong>Emails:</strong>
+                    <ul>
+                        @foreach (var email in data.Emails)
+                        {
+                            <li>@email</li>
+                        }
+                    </ul>
+                </div>
+            }
+            @if (data.PhoneNumbers.Any())
+            {
+                <div>
+                    <strong>Phone Numbers:</strong>
+                    <ul>
+                        @foreach (var phoneNumber in data.PhoneNumbers)
+                        {
+                            <li>@phoneNumber</li>
+                        }
+                    </ul>
+                </div>
+            }
         </li>
     }
 </ul>
 
 @code {
-    private List<string> uniqueLinks = new(); // List to display unique links
+    private List<ScrapedData> scrapedDataList = new List<ScrapedData>(); // List to store the scraped data
     private string inputUrl = string.Empty;
     private int maxMinutes = 1; // Maximum number of minutes to run the task
     private int maxDepth = 2; // Maximum recursion depth
@@ -70,30 +95,32 @@
 
         try
         {
-            var response = await HttpClient.GetAsync($"api/proxy/fetchLinks?url={Uri.EscapeDataString(inputUrl)}&maxDepth={maxDepth}&maxMinutes={maxMinutes}&filterText={Uri.EscapeDataString(optionalText)}");
+            var response = await HttpClient.GetAsync($"api/proxy/fetchLinks?url={inputUrl}&maxDepth={maxDepth}&maxMinutes={maxMinutes}&filterText={optionalText}");
             if (response.IsSuccessStatusCode)
             {
-                var links = await response.Content.ReadFromJsonAsync<HashSet<string>>();
-                uniqueLinks = links.ToList();
+                scrapedDataList = await response.Content.ReadFromJsonAsync<List<ScrapedData>>();
                 isFetchComplete = true;
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
             {
                 isTimeout = true;
             }
-            else
-            {
-                Console.WriteLine($"Failed to fetch links: {response.StatusCode}");
-            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception occurred: {ex.Message}");
+            Console.WriteLine($"Error fetching links: {ex.Message}");
         }
         finally
         {
             isFetching = false;
             StateHasChanged(); // Update the UI
         }
+    }
+
+    public class ScrapedData
+    {
+        public string Url { get; set; }
+        public List<string> Emails { get; set; }
+        public List<string> PhoneNumbers { get; set; }
     }
 }

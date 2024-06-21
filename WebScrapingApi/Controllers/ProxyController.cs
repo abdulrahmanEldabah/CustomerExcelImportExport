@@ -1,126 +1,150 @@
-namespace WebScrapingApi;
-
-using HtmlAgilityPack;
+using AngleSharp;
+using AngleSharp.Dom;
 using Microsoft.AspNetCore.Mvc;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 
-[Route("api/[controller]")]
-[ApiController]
-public class ProxyController : ControllerBase
+namespace WebScrapingApi
 {
-    private readonly HttpClient _httpClient;
-    private readonly DatabaseService _databaseService;
-
-    public ProxyController(HttpClient httpClient, DatabaseService databaseService)
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ProxyController : ControllerBase
     {
-        _httpClient = httpClient;
-        _databaseService = databaseService;
-    }
+        private readonly HttpClient _httpClient;
+        private readonly DatabaseService _databaseService;
 
-    [HttpGet("fetchLinks")]
-    public async Task<IActionResult> FetchLinks([FromQuery] string url, [FromQuery] int maxDepth = 2, [FromQuery] int maxMinutes = 1, [FromQuery] string filterText = "")
-    {
-        if (string.IsNullOrEmpty(url))
+        public ProxyController(HttpClient httpClient, DatabaseService databaseService)
         {
-            return BadRequest("URL is required");
+            _httpClient = httpClient;
+            _databaseService = databaseService;
         }
 
-        var cts = new CancellationTokenSource(TimeSpan.FromMinutes(maxMinutes));
-        var token = cts.Token;
-        var links = new HashSet<string>();
-
-        try
+        [HttpGet("fetchLinks")]
+        public async Task<IActionResult> FetchLinks([FromQuery] string url, [FromQuery] int maxDepth = 2, [FromQuery] int maxMinutes = 1, [FromQuery] string filterText = "")
         {
-            await FetchAndSaveLinksRecursive(url, 0, maxDepth, token, links, filterText);
-            return Ok(links);
-        }
-        catch (OperationCanceledException)
-        {
-            return StatusCode(408, "Request timed out");
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
-    }
-
-    private async Task FetchAndSaveLinksRecursive(string url, int depth, int maxDepth, CancellationToken token, HashSet<string> links, string filterText)
-    {
-        if (depth > maxDepth || links.Contains(url) || token.IsCancellationRequested)
-        {
-            return; // Stop recursion if maximum depth is reached, link already processed, or cancellation requested
-        }
-
-        if (!IsValidHttpUrl(url))
-        {
-            return; // Skip non-HTTP/HTTPS URLs
-        }
-
-        try
-        {
-            var html = await FetchHtmlAsync(url);
-            var document = ParseHtml(html);
-
-            // Check if the filterText exists in the HTML content
-            if (string.IsNullOrEmpty(filterText) || document.DocumentNode.InnerText.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                links.Add(url);
-
-            _databaseService.SaveLink(url);
-
-            var extractedLinks = ExtractLinks(document);
-
-            foreach (var link in extractedLinks)
+            if (string.IsNullOrEmpty(url))
             {
-                if (token.IsCancellationRequested) break; // Stop if cancellation is requested
+                return BadRequest("URL is required");
+            }
 
-                string fullLink = ConstructLink(link, url);
-                await FetchAndSaveLinksRecursive(fullLink, depth + 1, maxDepth, token, links, filterText);
+            var cts = new CancellationTokenSource(TimeSpan.FromMinutes(maxMinutes));
+            var token = cts.Token;
+            var scrapedDataList = new List<ScrapedData>();
+
+            try
+            {
+                await FetchAndSaveLinksRecursive(url, 0, maxDepth, token, scrapedDataList, filterText);
+                return Ok(scrapedDataList);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(408, "Request timed out");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
-        catch (Exception ex)
+
+        private async Task FetchAndSaveLinksRecursive(string url, int depth, int maxDepth, CancellationToken token, List<ScrapedData> scrapedDataList, string filterText)
         {
-            Console.WriteLine($"Failed to fetch HTML from {url}: {ex.Message}");
+            if (depth > maxDepth || scrapedDataList.Any(data => data.Url == url) || token.IsCancellationRequested)
+            {
+                return; // Stop recursion if maximum depth is reached, link already processed, or cancellation requested
+            }
+
+            if (!IsValidHttpUrl(url))
+            {
+                return; // Skip non-HTTP/HTTPS URLs
+            }
+
+            try
+            {
+                var html = await FetchHtmlAsync(url);
+                var document = await ParseHtmlAsync(html);
+
+                if (string.IsNullOrEmpty(filterText) || document.DocumentElement.TextContent.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                {
+                    var emails = ExtractEmails(html);
+                    var phoneNumbers = ExtractPhoneNumbers(html);
+
+                    scrapedDataList.Add(new ScrapedData
+                    {
+                        Url = url,
+                        Emails = emails,
+                        PhoneNumbers = phoneNumbers
+                    });
+
+                    _databaseService.SaveLink(url);
+
+                    var extractedLinks = ExtractLinks(document);
+
+                    foreach (var link in extractedLinks)
+                    {
+                        if (token.IsCancellationRequested) break; // Stop if cancellation is requested
+
+                        string fullLink = ConstructLink(link, url);
+                        await FetchAndSaveLinksRecursive(fullLink, depth + 1, maxDepth, token, scrapedDataList, filterText);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to fetch HTML from {url}: {ex.Message}");
+            }
         }
-    }
 
-    private bool IsValidHttpUrl(string url)
-    {
-        return Uri.TryCreate(url, UriKind.Absolute, out Uri uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
-    }
-
-    private string ConstructLink(string link, string baseUrl)
-    {
-        // Check if link is a complete URL or a relative path
-        if (!Uri.TryCreate(link, UriKind.Absolute, out Uri uri))
+        private bool IsValidHttpUrl(string url)
         {
-            // Combine baseUrl with the relative link
-            uri = new Uri(new Uri(baseUrl), link);
+            return Uri.TryCreate(url, UriKind.Absolute, out Uri uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
         }
 
-        return uri.ToString();
-    }
+        private string ConstructLink(string link, string baseUrl)
+        {
+            // Check if link is a complete URL or a relative path
+            if (!Uri.TryCreate(link, UriKind.Absolute, out Uri uri))
+            {
+                // Combine baseUrl with the relative link
+                uri = new Uri(new Uri(baseUrl), link);
+            }
 
-    public async Task<string> FetchHtmlAsync(string url)
-    {
-        var response = await _httpClient.GetAsync(url);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
-    }
+            return uri.ToString();
+        }
 
-    public HtmlDocument ParseHtml(string html)
-    {
-        var document = new HtmlDocument();
-        document.LoadHtml(html);
-        return document;
-    }
+        public async Task<string> FetchHtmlAsync(string url)
+        {
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync();
+        }
 
-    public List<string> ExtractLinks(HtmlDocument document)
-    {
-        return document.DocumentNode.SelectNodes("//a[@href]")
-            .Select(node => node.Attributes["href"].Value)
-            .ToList();
+        public async Task<IDocument> ParseHtmlAsync(string html)
+        {
+            var context = BrowsingContext.New(Configuration.Default);
+            return await context.OpenAsync(req => req.Content(html));
+        }
+
+        public List<string> ExtractLinks(IDocument document)
+        {
+            return document.QuerySelectorAll("a[href]")
+                .Select(element => element.GetAttribute("href"))
+                .ToList();
+        }
+
+        public List<string> ExtractEmails(string html)
+        {
+            var emailPattern = @"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}";
+            var matches = Regex.Matches(html, emailPattern);
+            return matches.Select(m => m.Value).ToList();
+        }
+
+        public List<string> ExtractPhoneNumbers(string html)
+        {
+            var phonePattern = @"\+?\d{1,4}?[-.\s]?(\(?\d{1,3}?\)?[-.\s]?)?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}";
+            var matches = Regex.Matches(html, phonePattern);
+            return matches.Select(m => m.Value).ToList();
+        }
     }
 }
