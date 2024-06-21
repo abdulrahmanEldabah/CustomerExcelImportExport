@@ -12,13 +12,13 @@ public class Program
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         builder.RootComponents.Add<App>("#app");
-     
+        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7081") });
+
         builder.Services.AddDbContext<AppDbContext>(options =>
         {
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             options.UseSqlite(connectionString);
         });
-        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7081") }); // Replace with your ASP.NET Core API URL
 
         builder.Services.AddScoped<WebScraperService>();
         builder.Services.AddScoped<DatabaseService>();

@@ -1,44 +1,47 @@
 using Microsoft.AspNetCore.Mvc;
-
-using Microsoft.AspNetCore.Mvc;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
-[Route("api/[controller]")]
+namespace WebScrapingApi;
+
 [ApiController]
+[Route("api/[controller]")]
 public class ProxyController : ControllerBase
 {
-    private readonly IHttpClientFactory _clientFactory;
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<ProxyController> _logger;
 
-    public ProxyController(IHttpClientFactory clientFactory)
+    public ProxyController(HttpClient httpClient, ILogger<ProxyController> logger)
     {
-        _clientFactory = clientFactory;
+        _httpClient = httpClient;
+        _logger = logger;
     }
 
     [HttpGet]
     public async Task<IActionResult> Get(string url)
     {
-        if (string.IsNullOrEmpty(url))
+        if (string.IsNullOrWhiteSpace(url))
         {
-            return BadRequest("URL parameter is required.");
+            return BadRequest("URL is required.");
         }
 
         try
         {
-            var client = _clientFactory.CreateClient();
-            var response = await client.GetAsync(url);
+            _logger.LogInformation($"Fetching URL: {url}");
+            var response = await _httpClient.GetAsync(url);
+            _logger.LogInformation($"Response Status: {response.StatusCode}");
 
-            if (!response.IsSuccessStatusCode)
-            {
-                return StatusCode((int)response.StatusCode, response.ReasonPhrase);
-            }
-
+            response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
-            return Ok(content);
+            _logger.LogInformation($"Content Length: {content.Length}");
+
+            return Content(content, "text/html");
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException e)
         {
-            return BadRequest($"Error fetching data from {url}: {ex.Message}");
+            _logger.LogError($"Error fetching URL: {e.Message}");
+            return StatusCode(500, $"Error fetching URL: {e.Message}");
         }
     }
 }

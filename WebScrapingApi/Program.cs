@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.OpenApi.Models;
 
 namespace WebScrapingApi
 {
@@ -15,9 +13,21 @@ namespace WebScrapingApi
             // Add services to the container.
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(c =>
+            builder.Services.AddSwaggerGen();
+
+            // Register HttpClient
+            builder.Services.AddHttpClient();
+
+            // Add CORS policy
+            builder.Services.AddCors(options =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebScrapingApi", Version = "v1" });
+                options.AddPolicy("AllowSpecificOrigin",
+                    builder =>
+                    {
+                        builder.WithOrigins("https://localhost:7002")
+                               .AllowAnyHeader()
+                               .AllowAnyMethod();
+                    });
             });
 
             var app = builder.Build();
@@ -26,17 +36,17 @@ namespace WebScrapingApi
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "WebScrapingApi v1"));
+                app.UseSwaggerUI();
             }
 
             app.UseHttpsRedirection();
-            app.UseRouting();
+
             app.UseAuthorization();
 
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
+            // Use CORS policy
+            app.UseCors("AllowSpecificOrigin");
+
+            app.MapControllers();
 
             app.Run();
         }
