@@ -1,13 +1,27 @@
 ﻿@page "/"
-@inject WebScraperService WebScraperService
-@inject DatabaseService DatabaseService
-@inject IJSRuntime JSRuntime
+@inject HttpClient HttpClient
 
 <h3>Collected Links</h3>
 <div>
     <InputText @bind-Value="inputUrl" placeholder="Enter URL" />
+    <InputNumber @bind-Value="maxMinutes" placeholder="Enter Minutes" />
     <button @onclick="FetchAndSaveLinks">Fetch Links</button>
 </div>
+
+@if (isFetching)
+{
+    <p>Fetching links...</p>
+}
+
+@if (isFetchComplete)
+{
+    <p>All links have been fetched successfully!</p>
+}
+
+@if (isTimeout)
+{
+    <p>Fetching links timed out.</p>
+}
 
 <ul>
     @foreach (var link in uniqueLinks)
@@ -19,10 +33,12 @@
 </ul>
 
 @code {
-    private HashSet<string> links = new(); // Use HashSet to store unique links
     private List<string> uniqueLinks = new(); // List to display unique links
     private string inputUrl = string.Empty;
-    private int maxDepth = 2; // Maximum recursion depth to avoid infinite loops
+    private int maxMinutes = 1; // Maximum number of minutes to run the task
+    private bool isFetching = false;
+    private bool isFetchComplete = false;
+    private bool isTimeout = false;
 
     private async Task FetchAndSaveLinks()
     {
@@ -31,57 +47,37 @@
             return; // Don't proceed if the URL is empty
         }
 
-        await FetchAndSaveLinksRecursive(inputUrl, 0);
-        uniqueLinks = links.ToList(); // Convert HashSet to List for display
-    }
-
-    private async Task FetchAndSaveLinksRecursive(string url, int depth)
-    {
-        if (depth > maxDepth || links.Contains(url))
-        {
-            return; // Stop recursion if maximum depth is reached or link already processed
-        }
-
-        if (!IsValidHttpUrl(url))
-        {
-            return; // Skip non-HTTP/HTTPS URLs
-        }
+        isFetching = true;
+        isFetchComplete = false;
+        isTimeout = false;
+        StateHasChanged(); // Update the UI
 
         try
         {
-            links.Add(url);
-            DatabaseService.SaveLink(url);
-
-            var html = await WebScraperService.FetchHtmlAsync(url);
-            var document = WebScraperService.ParseHtml(html);
-            var extractedLinks = WebScraperService.ExtractLinks(document);
-
-            foreach (var link in extractedLinks)
+            var response = await HttpClient.GetAsync($"api/proxy/fetchLinks?url={Uri.EscapeDataString(inputUrl)}&maxDepth=2&maxMinutes={maxMinutes}");
+            if (response.IsSuccessStatusCode)
             {
-                string fullLink = ConstructLink(link, url);
-                await FetchAndSaveLinksRecursive(fullLink, depth + 1);
+                var links = await response.Content.ReadFromJsonAsync<HashSet<string>>();
+                uniqueLinks = links.ToList();
+                isFetchComplete = true;
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+            {
+                isTimeout = true;
+            }
+            else
+            {
+                Console.WriteLine($"Failed to fetch links: {response.StatusCode}");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to fetch HTML from {url}: {ex.Message}");
+            Console.WriteLine($"Exception occurred: {ex.Message}");
         }
-    }
-
-    private bool IsValidHttpUrl(string url)
-    {
-        return Uri.TryCreate(url, UriKind.Absolute, out Uri uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
-    }
-
-    private string ConstructLink(string link, string baseUrl)
-    {
-        // Check if link is a complete URL or a relative path
-        if (!Uri.TryCreate(link, UriKind.Absolute, out Uri uri))
+        finally
         {
-            // Combine baseUrl with the relative link
-            uri = new Uri(new Uri(baseUrl), link);
+            isFetching = false;
+            StateHasChanged(); // Update the UI
         }
-
-        return uri.ToString();
     }
 }

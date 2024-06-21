@@ -1,4 +1,4 @@
-﻿namespace WebScraping;
+﻿namespace WebScrapingApi;
 
 // AppDbContext.cs
 using Microsoft.EntityFrameworkCore;

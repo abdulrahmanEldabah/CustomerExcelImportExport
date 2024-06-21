@@ -1,4 +1,4 @@
-﻿namespace WebScraping;
+﻿namespace WebScrapingApi;
 
 
 using Microsoft.EntityFrameworkCore;

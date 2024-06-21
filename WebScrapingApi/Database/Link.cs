@@ -1,4 +1,4 @@
-﻿namespace WebScraping;
+﻿namespace WebScrapingApi;
 
 // Link.cs
 public class Link

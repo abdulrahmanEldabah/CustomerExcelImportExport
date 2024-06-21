@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
 
 namespace WebScrapingApi
 {
@@ -14,6 +12,16 @@ namespace WebScrapingApi
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            // Add DbContext with SQLite
+            builder.Services.AddDbContext<AppDbContext>(options =>
+            {
+                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+                options.UseSqlite(connectionString);
+            });
+
+            // Add DatabaseService
+            builder.Services.AddScoped<DatabaseService>();
 
             // Register HttpClient
             builder.Services.AddHttpClient();
