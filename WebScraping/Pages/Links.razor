@@ -2,31 +2,41 @@
 @inject HttpClient HttpClient
 
 <h3>Collected Links</h3>
-<div>
-    <InputText @bind-Value="inputUrl" placeholder="Enter URL" />
-    <InputNumber @bind-Value="maxMinutes" placeholder="Enter Minutes" />
-    <button @onclick="FetchAndSaveLinks">Fetch Links</button>
+<div class="container mt-3">
+    <div class="form-group mb-3">
+        <label for="urlInput">Enter URL</label>
+        <input type="text" class="form-control" id="urlInput" @bind="inputUrl" placeholder="Enter URL" />
+    </div>
+    <div class="form-group mb-3">
+        <label for="minutesInput">Enter Minutes</label>
+        <input type="number" class="form-control" id="minutesInput" @bind="maxMinutes" placeholder="Enter Minutes" />
+    </div>
+    <div class="form-group mb-3">
+        <label for="depthInput">Enter Depth</label>
+        <input type="number" class="form-control" id="depthInput" @bind="maxDepth" placeholder="Enter Depth" />
+    </div>
+    <button class="btn btn-primary" @onclick="FetchAndSaveLinks">Fetch Links</button>
 </div>
 
 @if (isFetching)
 {
-    <p>Fetching links...</p>
+    <div class="alert alert-info mt-3">Fetching links...</div>
 }
 
 @if (isFetchComplete)
 {
-    <p>All links have been fetched successfully!</p>
+    <div class="alert alert-success mt-3">All links have been fetched successfully!</div>
 }
 
 @if (isTimeout)
 {
-    <p>Fetching links timed out.</p>
+    <div class="alert alert-danger mt-3">Fetching links timed out.</div>
 }
 
-<ul>
+<ul class="list-group mt-3">
     @foreach (var link in uniqueLinks)
     {
-        <li>
+        <li class="list-group-item">
             <a href="@link" target="_blank">@link</a>
         </li>
     }
@@ -36,6 +46,7 @@
     private List<string> uniqueLinks = new(); // List to display unique links
     private string inputUrl = string.Empty;
     private int maxMinutes = 1; // Maximum number of minutes to run the task
+    private int maxDepth = 2; // Maximum recursion depth
     private bool isFetching = false;
     private bool isFetchComplete = false;
     private bool isTimeout = false;
@@ -54,7 +65,7 @@
 
         try
         {
-            var response = await HttpClient.GetAsync($"api/proxy/fetchLinks?url={Uri.EscapeDataString(inputUrl)}&maxDepth=2&maxMinutes={maxMinutes}");
+            var response = await HttpClient.GetAsync($"api/proxy/fetchLinks?url={Uri.EscapeDataString(inputUrl)}&maxDepth={maxDepth}&maxMinutes={maxMinutes}");
             if (response.IsSuccessStatusCode)
             {
                 var links = await response.Content.ReadFromJsonAsync<HashSet<string>>();
