@@ -15,6 +15,10 @@
         <label for="depthInput">Enter Depth</label>
         <input type="number" class="form-control" id="depthInput" @bind="maxDepth" placeholder="Enter Depth" />
     </div>
+    <div class="form-group mb-3">
+        <label for="textInput">Optional Text Filter</label>
+        <input type="text" class="form-control" id="textInput" @bind="optionalText" placeholder="Enter text to filter URLs" />
+    </div>
     <button class="btn btn-primary" @onclick="FetchAndSaveLinks">Fetch Links</button>
 </div>
 
@@ -47,6 +51,7 @@
     private string inputUrl = string.Empty;
     private int maxMinutes = 1; // Maximum number of minutes to run the task
     private int maxDepth = 2; // Maximum recursion depth
+    private string optionalText = string.Empty; // Optional text to filter URLs
     private bool isFetching = false;
     private bool isFetchComplete = false;
     private bool isTimeout = false;
@@ -65,7 +70,7 @@
 
         try
         {
-            var response = await HttpClient.GetAsync($"api/proxy/fetchLinks?url={Uri.EscapeDataString(inputUrl)}&maxDepth={maxDepth}&maxMinutes={maxMinutes}");
+            var response = await HttpClient.GetAsync($"api/proxy/fetchLinks?url={Uri.EscapeDataString(inputUrl)}&maxDepth={maxDepth}&maxMinutes={maxMinutes}&filterText={Uri.EscapeDataString(optionalText)}");
             if (response.IsSuccessStatusCode)
             {
                 var links = await response.Content.ReadFromJsonAsync<HashSet<string>>();

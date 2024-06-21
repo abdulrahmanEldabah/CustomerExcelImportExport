@@ -2,6 +2,10 @@ namespace WebScrapingApi;
 
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -17,7 +21,7 @@ public class ProxyController : ControllerBase
     }
 
     [HttpGet("fetchLinks")]
-    public async Task<IActionResult> FetchLinks([FromQuery] string url, [FromQuery] int maxDepth = 2, [FromQuery] int maxMinutes = 1)
+    public async Task<IActionResult> FetchLinks([FromQuery] string url, [FromQuery] int maxDepth = 2, [FromQuery] int maxMinutes = 1, [FromQuery] string filterText = "")
     {
         if (string.IsNullOrEmpty(url))
         {
@@ -30,7 +34,7 @@ public class ProxyController : ControllerBase
 
         try
         {
-            await FetchAndSaveLinksRecursive(url, 0, maxDepth, token, links);
+            await FetchAndSaveLinksRecursive(url, 0, maxDepth, token, links, filterText);
             return Ok(links);
         }
         catch (OperationCanceledException)
@@ -43,7 +47,7 @@ public class ProxyController : ControllerBase
         }
     }
 
-    private async Task FetchAndSaveLinksRecursive(string url, int depth, int maxDepth, CancellationToken token, HashSet<string> links)
+    private async Task FetchAndSaveLinksRecursive(string url, int depth, int maxDepth, CancellationToken token, HashSet<string> links, string filterText)
     {
         if (depth > maxDepth || links.Contains(url) || token.IsCancellationRequested)
         {
@@ -57,11 +61,15 @@ public class ProxyController : ControllerBase
 
         try
         {
-            links.Add(url);
-            _databaseService.SaveLink(url);
-
             var html = await FetchHtmlAsync(url);
             var document = ParseHtml(html);
+
+            // Check if the filterText exists in the HTML content
+            if (string.IsNullOrEmpty(filterText) || document.DocumentNode.InnerText.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                links.Add(url);
+
+            _databaseService.SaveLink(url);
+
             var extractedLinks = ExtractLinks(document);
 
             foreach (var link in extractedLinks)
@@ -69,7 +77,7 @@ public class ProxyController : ControllerBase
                 if (token.IsCancellationRequested) break; // Stop if cancellation is requested
 
                 string fullLink = ConstructLink(link, url);
-                await FetchAndSaveLinksRecursive(fullLink, depth + 1, maxDepth, token, links);
+                await FetchAndSaveLinksRecursive(fullLink, depth + 1, maxDepth, token, links, filterText);
             }
         }
         catch (Exception ex)
