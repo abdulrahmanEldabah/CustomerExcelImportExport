@@ -1,10 +1,12 @@
 using AngleSharp;
 using AngleSharp.Dom;
+using AngleSharp.Io;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using HttpMethod = System.Net.Http.HttpMethod;
 
 namespace WebScrapingApi
 {
@@ -65,10 +67,12 @@ namespace WebScrapingApi
                 var html = await FetchHtmlAsync(url);
                 var document = await ParseHtmlAsync(html);
 
-                if (string.IsNullOrEmpty(filterText) || document.DocumentElement.TextContent.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                var visibleText = ExtractVisibleText(document);
+
+                if (string.IsNullOrEmpty(filterText) || visibleText.Contains(filterText, StringComparison.OrdinalIgnoreCase))
                 {
-                    var emails = ExtractEmails(html);
-                    var phoneNumbers = ExtractPhoneNumbers(html);
+                    var emails = ExtractEmails(visibleText);
+                    var phoneNumbers = ExtractPhoneNumbers(visibleText);
 
                     scrapedDataList.Add(new ScrapedData
                     {
@@ -76,8 +80,6 @@ namespace WebScrapingApi
                         Emails = emails,
                         PhoneNumbers = phoneNumbers
                     });
-
-                    _databaseService.SaveLink(url);
 
                     var extractedLinks = ExtractLinks(document);
 
@@ -115,15 +117,28 @@ namespace WebScrapingApi
 
         public async Task<string> FetchHtmlAsync(string url)
         {
-            var response = await _httpClient.GetAsync(url);
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36");
+            request.Headers.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+            request.Headers.Add("DNT", "1"); // Do Not Track request header
+
+            var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync();
         }
 
         public async Task<IDocument> ParseHtmlAsync(string html)
         {
-            var context = BrowsingContext.New(Configuration.Default);
+            var context = BrowsingContext.New(Configuration.Default.WithDefaultLoader(new LoaderOptions
+            {
+                IsResourceLoadingEnabled = false // Disable loading of additional resources like images, CSS, JS
+            }));
             return await context.OpenAsync(req => req.Content(html));
+        }
+
+        public string ExtractVisibleText(IDocument document)
+        {
+            return document.Body.TextContent;
         }
 
         public List<string> ExtractLinks(IDocument document)
@@ -133,18 +148,26 @@ namespace WebScrapingApi
                 .ToList();
         }
 
-        public List<string> ExtractEmails(string html)
+        public List<string> ExtractEmails(string text)
         {
             var emailPattern = @"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}";
-            var matches = Regex.Matches(html, emailPattern);
+            var matches = Regex.Matches(text, emailPattern);
             return matches.Select(m => m.Value).ToList();
         }
 
-        public List<string> ExtractPhoneNumbers(string html)
+        public List<string> ExtractPhoneNumbers(string text)
         {
             var phonePattern = @"\+?\d{1,4}?[-.\s]?(\(?\d{1,3}?\)?[-.\s]?)?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}";
-            var matches = Regex.Matches(html, phonePattern);
-            return matches.Select(m => m.Value).ToList();
+            var matches = Regex.Matches(text, phonePattern);
+
+            var filteredNumbers = matches
+                .Select(m => m.Value)
+                .Where(number => number.Length >= 9 && number.Length <= 12)
+                .ToList();
+
+            return filteredNumbers;
         }
+
+       
     }
 }
