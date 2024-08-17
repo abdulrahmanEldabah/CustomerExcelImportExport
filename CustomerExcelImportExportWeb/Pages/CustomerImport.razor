@@ -1,0 +1,43 @@
+﻿@namespace CustomerExcelImportExportWeb
+@page "/"
+@inject HttpClient HttpClient
+@inject NavigationManager NavManager
+
+<h3 class="text-primary mb-4">Customer Form</h3>
+
+<EditForm Model="@customer" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger" />
+
+    <div class="mb-3">
+        <label for="Name" class="form-label">Name:</label>
+        <InputText id="Name" class="form-control" @bind-Value="customer.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label for="Email" class="form-label">Email:</label>
+        <InputText id="Email" class="form-control" @bind-Value="customer.Email" />
+    </div>
+
+    <div class="mb-3">
+        <label for="PhoneNumber" class="form-label">Phone Number:</label>
+        <InputText id="PhoneNumber" class="form-control" @bind-Value="customer.PhoneNumber" />
+    </div>
+
+    <div class="mb-3">
+        <label for="Address" class="form-label">Address:</label>
+        <InputText id="Address" class="form-control" @bind-Value="customer.Address" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+<div class="mt-5">
+    <QuickGrid ItemsProvider="@customers" Virtualize="true" Pagination="@pagination" class="table table-striped">
+        <PropertyColumn Title="Name" Property="@(c => c.Name)" />
+        <PropertyColumn Title="Email" Property="@(c => c.Email)" />
+        <PropertyColumn Title="Address" Property="@(c => c.Address)" />
+        <PropertyColumn Title="PhoneNumber" Property="@(c => c.PhoneNumber)" />
+    </QuickGrid>
+    <Paginator State="@pagination" />
+</div>

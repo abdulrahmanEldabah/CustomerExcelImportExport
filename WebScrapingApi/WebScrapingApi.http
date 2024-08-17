@@ -1,6 +1,0 @@
-@WebScrapingApi_HostAddress = http://localhost:5076
-
-GET {{WebScrapingApi_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

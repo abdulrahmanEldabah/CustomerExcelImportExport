@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace WebScrapingApi
+namespace CustomerExcelImportExportApi
 {
     public class Program
     {
@@ -13,15 +13,11 @@ namespace WebScrapingApi
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            // Add DbContext with SQLite
             builder.Services.AddDbContext<AppDbContext>(options =>
-            {
-                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-                options.UseSqlite(connectionString);
-            });
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // Add DatabaseService
-            builder.Services.AddScoped<DatabaseService>();
+            builder.Services.AddScoped<ICustomerRepository ,CustomerRepository>();
 
             // Register HttpClient
             builder.Services.AddHttpClient();
