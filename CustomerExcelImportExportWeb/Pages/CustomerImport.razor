@@ -31,6 +31,26 @@
                 <InputText id="Address" class="form-control" @bind-Value="customer.Address" />
             </div>
 
+            <div class="mb-3">
+                <label for="DateOfBirth" class="form-label">Date of Birth:</label>
+                <InputDate id="DateOfBirth" class="form-control" @bind-Value="customer.DateOfBirth" />
+            </div>
+
+            <div class="mb-3">
+                <label for="Gender" class="form-label">Gender:</label>
+                <InputText id="Gender" class="form-control" @bind-Value="customer.Gender" />
+            </div>
+
+            <div class="mb-3">
+                <label for="Occupation" class="form-label">Occupation:</label>
+                <InputText id="Occupation" class="form-control" @bind-Value="customer.Occupation" />
+            </div>
+
+            <div class="mb-3">
+                <label for="IsActive" class="form-label">Is Active:</label>
+                <InputCheckbox id="IsActive" class="form-check-input" @bind-Value="customer.IsActive" />
+            </div>
+
             <button type="submit" class="btn btn-primary">Submit</button>
         </EditForm>
     </div>
@@ -58,7 +78,13 @@
             <PropertyColumn Title="Email" Property="@(c => c.Email)" />
             <PropertyColumn Title="Address" Property="@(c => c.Address)" />
             <PropertyColumn Title="PhoneNumber" Property="@(c => c.PhoneNumber)" />
+            <PropertyColumn Title="Date of Birth" Property="@(c => c.DateOfBirth.ToShortDateString())" />
+            <PropertyColumn Title="Gender" Property="@(c => c.Gender)" />
+            <PropertyColumn Title="Occupation" Property="@(c => c.Occupation)" />
+            <PropertyColumn Title="Is Active" Property="@(c => c.IsActive)" />
         </QuickGrid>
         <Paginator State="@pagination" />
     </div>
 </div>
+
+

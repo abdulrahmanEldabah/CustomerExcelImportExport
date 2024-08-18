@@ -1,6 +1,7 @@
 using CustomerExcelImportExport.Shared;
 using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
+using System.Globalization;
 
 namespace CustomerExcelImportExportApi;
 
@@ -28,6 +29,7 @@ public class CustomerController : ControllerBase
 
         return Ok("Customer created successfully.");
     }
+
     [HttpGet]
     public async Task<IActionResult> GetCustomers(int pageNumber = 1, int pageSize = 10)
     {
@@ -52,6 +54,7 @@ public class CustomerController : ControllerBase
 
         return Ok(response);
     }
+
     [HttpGet("export")]
     public async Task<IActionResult> Export()
     {
@@ -72,6 +75,12 @@ public class CustomerController : ControllerBase
         worksheet.Cells[1, 2].Value = "Email";
         worksheet.Cells[1, 3].Value = "Phone Number";
         worksheet.Cells[1, 4].Value = "Address";
+        worksheet.Cells[1, 5].Value = "Date of Birth";
+        worksheet.Cells[1, 6].Value = "Gender";
+        worksheet.Cells[1, 7].Value = "Occupation";
+        worksheet.Cells[1, 8].Value = "Created Date";
+        worksheet.Cells[1, 9].Value = "Last Updated Date";
+        worksheet.Cells[1, 10].Value = "Is Active";
 
         // Add data
         var row = 2;
@@ -81,11 +90,18 @@ public class CustomerController : ControllerBase
             worksheet.Cells[row, 2].Value = customer.Email;
             worksheet.Cells[row, 3].Value = customer.PhoneNumber;
             worksheet.Cells[row, 4].Value = customer.Address;
+            worksheet.Cells[row, 5].Value = customer.DateOfBirth.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            worksheet.Cells[row, 6].Value = customer.Gender;
+            worksheet.Cells[row, 7].Value = customer.Occupation;
+            worksheet.Cells[row, 8].Value = customer.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            worksheet.Cells[row, 9].Value = customer.LastUpdatedDate?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            worksheet.Cells[row, 10].Value = customer.IsActive;
             row++;
         }
 
         return package.GetAsByteArray();
     }
+
     [HttpPost("import")]
     public async Task<IActionResult> ImportCustomers(IFormFile file)
     {
@@ -116,13 +132,19 @@ public class CustomerController : ControllerBase
                     Name = worksheet.Cells[row, 1].Text,
                     Email = worksheet.Cells[row, 2].Text,
                     PhoneNumber = worksheet.Cells[row, 3].Text,
-                    Address = worksheet.Cells[row, 4].Text
+                    Address = worksheet.Cells[row, 4].Text,
+                    DateOfBirth = DateTime.TryParseExact(worksheet.Cells[row, 5].Text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOfBirth) ? dateOfBirth : DateTime.MinValue,
+                    Gender = worksheet.Cells[row, 6].Text,
+                    Occupation = worksheet.Cells[row, 7].Text,
+                    CreatedDate = DateTime.TryParseExact(worksheet.Cells[row, 8].Text, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var createdDate) ? createdDate : DateTime.MinValue,
+                    LastUpdatedDate = DateTime.TryParseExact(worksheet.Cells[row, 9].Text, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var lastUpdatedDate) ? lastUpdatedDate : null,
+                    IsActive = bool.TryParse(worksheet.Cells[row, 10].Text, out var isActive) ? isActive : false,
                 };
 
                 customers.Add(customer);
             }
 
-           await _customerRepository.AddCustomersAsync(customers);
+            await _customerRepository.AddCustomersAsync(customers);
 
             return Ok("Customers imported successfully.");
         }
@@ -131,7 +153,4 @@ public class CustomerController : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-
 }
-
-

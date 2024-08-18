@@ -19,9 +19,10 @@ public partial class CustomerImport
     PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
     GridItemsProvider<Customer>? customers;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnAfterRenderAsync(bool firstRender)
     {
         LoadCustomer();
+        return base.OnAfterRenderAsync(firstRender);
     }
 
     private void LoadCustomer()
