@@ -66,5 +66,9 @@ public class CustomerRepository : ICustomerRepository
     {
         return await _dbContext.Customers.CountAsync();
     }
-
+    public async Task DeleteAllCustomersAsync()
+    {
+        _dbContext.Customers.RemoveRange(_dbContext.Customers);
+        await _dbContext.SaveChangesAsync();
+    }
 }

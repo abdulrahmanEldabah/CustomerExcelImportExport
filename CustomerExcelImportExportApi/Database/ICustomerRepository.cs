@@ -14,5 +14,7 @@ public interface ICustomerRepository
     Task DeleteCustomerAsync(int customerId);
     Task<List<Customer>> GetCustomersAsync(int pageNumber, int pageSize);
     Task<int> GetTotalCustomerCountAsync();
+    Task DeleteAllCustomersAsync();
+
 
 }

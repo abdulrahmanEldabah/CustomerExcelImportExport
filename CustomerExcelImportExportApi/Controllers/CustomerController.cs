@@ -41,19 +41,15 @@ public class CustomerController : ControllerBase
         var customers = await _customerRepository.GetCustomersAsync(pageNumber, pageSize);
         var totalCustomers = await _customerRepository.GetTotalCustomerCountAsync();
 
-        if (customers == null || customers.Count == 0)
-        {
-            return NotFound("No customers found.");
-        }
-
         var response = new PaginatedResponse<Customer>
         {
-            Items = customers,
+            Items = customers ?? new List<Customer>(),  // Ensure `Items` is never null
             TotalCount = totalCustomers
         };
 
         return Ok(response);
     }
+
 
     [HttpGet("export")]
     public async Task<IActionResult> Export()
@@ -153,4 +149,25 @@ public class CustomerController : ControllerBase
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteCustomer(int id)
+    {
+        var customer = await _customerRepository.GetCustomerByIdAsync(id);
+        if (customer == null)
+        {
+            return NotFound("Customer not found.");
+        }
+
+        await _customerRepository.DeleteCustomerAsync(customer.CustomerID);
+
+        return Ok("Customer deleted successfully.");
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> DeleteAllCustomers()
+    {
+        await _customerRepository.DeleteAllCustomersAsync();
+        return Ok("All customers deleted successfully.");
+    }
+
 }

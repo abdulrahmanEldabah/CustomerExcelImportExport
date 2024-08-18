@@ -19,13 +19,16 @@ public partial class CustomerImport
     PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
     GridItemsProvider<Customer>? customers;
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        LoadCustomer();
-        return base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            await LoadCustomer();
+        }
+        await base.OnAfterRenderAsync(firstRender);
     }
 
-    private void LoadCustomer()
+    private async Task LoadCustomer()
     {
         customers = async req =>
         {
@@ -66,7 +69,7 @@ public partial class CustomerImport
                 Console.WriteLine("Customer created successfully.");
 
                 customer = new Customer();
-                LoadCustomer();
+                await LoadCustomer();
             }
             else
             {
@@ -125,13 +128,23 @@ public partial class CustomerImport
 
             if (response.IsSuccessStatusCode)
             {
-                LoadCustomer();
+                await LoadCustomer();
             }
             else
             {
             }
         }
     }
+    private async Task DeleteCustomer(int customerId)
+    {
+        await HttpClient.DeleteAsync($"api/Customer/{customerId}");
+        await LoadCustomer();
+    }
 
+    private async Task DeleteAllCustomers()
+    {
+        await HttpClient.DeleteAsync("api/Customer");
+        await LoadCustomer();
+    }
 
 }
