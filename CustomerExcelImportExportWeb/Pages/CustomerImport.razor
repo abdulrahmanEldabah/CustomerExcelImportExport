@@ -3,88 +3,86 @@
 @inject HttpClient HttpClient
 @inject NavigationManager NavManager
 
-<h3 class="text-primary mb-4">Customer Form</h3>
+<h3 class="text-primary mb-4">Manage Customers</h3>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <EditForm Model="@customer" OnValidSubmit="HandleValidSubmit">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" />
+<label for="modal-toggle" class="btn btn-primary mb-4">Add New Customer</label>
 
-            <div class="mb-3">
-                <label for="Name" class="form-label">Name:</label>
-                <InputText id="Name" class="form-control" @bind-Value="customer.Name" />
-            </div>
-
-            <div class="mb-3">
-                <label for="Email" class="form-label">Email:</label>
-                <InputText id="Email" class="form-control" @bind-Value="customer.Email" />
-            </div>
-
-            <div class="mb-3">
-                <label for="PhoneNumber" class="form-label">Phone Number:</label>
-                <InputText id="PhoneNumber" class="form-control" @bind-Value="customer.PhoneNumber" />
-            </div>
-
-            <div class="mb-3">
-                <label for="Address" class="form-label">Address:</label>
-                <InputText id="Address" class="form-control" @bind-Value="customer.Address" />
-            </div>
-
-            <div class="mb-3">
-                <label for="DateOfBirth" class="form-label">Date of Birth:</label>
-                <InputDate id="DateOfBirth" class="form-control" @bind-Value="customer.DateOfBirth" />
-            </div>
-
-            <div class="mb-3">
-                <label for="Gender" class="form-label">Gender:</label>
-                <InputText id="Gender" class="form-control" @bind-Value="customer.Gender" />
-            </div>
-
-            <div class="mb-3">
-                <label for="Occupation" class="form-label">Occupation:</label>
-                <InputText id="Occupation" class="form-control" @bind-Value="customer.Occupation" />
-            </div>
-
-            <div class="mb-3">
-                <label for="IsActive" class="form-label">Is Active:</label>
-                <InputCheckbox id="IsActive" class="form-check-input" @bind-Value="customer.IsActive" />
-            </div>
-
-            <button type="submit" class="btn btn-primary">Submit</button>
-        </EditForm>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <label class="form-label">Import Customers from Excel:</label>
+        <InputFile OnChange="HandleFileSelected" class="form-control" />
     </div>
-</div>
-
-<h3 class="text-primary mb-4">Import and Export Customers</h3>
-
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="mb-3">
-            <label class="form-label">Import Customers from Excel:</label>
-            <InputFile OnChange="HandleFileSelected" class="form-control" />
-        </div>
-
-        <div class="d-flex justify-content-end">
-            <button @onclick="ExportToExcel" class="btn btn-secondary">Export to Excel</button>
-        </div>
+    <div class="col-md-6 d-flex justify-content-end align-items-end">
+        <button @onclick="ExportToExcel" class="btn btn-secondary">
+            <i class="bi bi-file-earmark-excel"></i> Export to Excel
+        </button>
     </div>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <QuickGrid ItemsProvider="@customers" Virtualize="true" Pagination="@pagination" class="table table-striped">
+        <QuickGrid ItemsProvider="@customers" Virtualize="true" Pagination="@pagination" class="table table-striped table-hover">
             <PropertyColumn Title="Name" Property="@(c => c.Name)" />
             <PropertyColumn Title="Email" Property="@(c => c.Email)" />
             <PropertyColumn Title="Address" Property="@(c => c.Address)" />
-            <PropertyColumn Title="PhoneNumber" Property="@(c => c.PhoneNumber)" />
+            <PropertyColumn Title="Phone Number" Property="@(c => c.PhoneNumber)" />
             <PropertyColumn Title="Date of Birth" Property="@(c => c.DateOfBirth.ToShortDateString())" />
             <PropertyColumn Title="Gender" Property="@(c => c.Gender)" />
             <PropertyColumn Title="Occupation" Property="@(c => c.Occupation)" />
-            <PropertyColumn Title="Is Active" Property="@(c => c.IsActive)" />
+            <PropertyColumn Title="Is Active" Property="@(c => c.IsActive ? "Yes" : "No")" />
         </QuickGrid>
         <Paginator State="@pagination" />
     </div>
 </div>
 
+<!-- CSS-Only Modal -->
+<input type="checkbox" id="modal-toggle" class="modal-toggle" hidden />
+<div class="modal">
+    <div class="modal-content">
+        <label for="modal-toggle" class="modal-close">&times;</label>
+        <h5 class="modal-title mb-4">Customer Form</h5>
+        <EditForm Model="@customer" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
 
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="Name" class="form-label">Name:</label>
+                    <InputText id="Name" class="form-control" @bind-Value="customer.Name" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="Email" class="form-label">Email:</label>
+                    <InputText id="Email" class="form-control" @bind-Value="customer.Email" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="PhoneNumber" class="form-label">Phone Number:</label>
+                    <InputText id="PhoneNumber" class="form-control" @bind-Value="customer.PhoneNumber" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="Address" class="form-label">Address:</label>
+                    <InputText id="Address" class="form-control" @bind-Value="customer.Address" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="DateOfBirth" class="form-label">Date of Birth:</label>
+                    <InputDate id="DateOfBirth" class="form-control" @bind-Value="customer.DateOfBirth" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="Gender" class="form-label">Gender:</label>
+                    <InputText id="Gender" class="form-control" @bind-Value="customer.Gender" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="Occupation" class="form-label">Occupation:</label>
+                    <InputText id="Occupation" class="form-control" @bind-Value="customer.Occupation" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="IsActive" class="form-label">Is Active:</label>
+                    <InputCheckbox id="IsActive" class="form-check-input" @bind-Value="customer.IsActive" />
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+        </EditForm>
+    </div>
+</div>

@@ -58,9 +58,9 @@ public class CustomerController : ControllerBase
     [HttpGet("export")]
     public async Task<IActionResult> Export()
     {
-        var customers = await _customerRepository.GetAllCustomersAsync(); // Implement this method
+        var customers = await _customerRepository.GetAllCustomersAsync(); 
 
-        var excelFile = GenerateExcelFile(customers); // Implement this method to create Excel file
+        var excelFile = GenerateExcelFile(customers); 
 
         return File(excelFile, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "customers.xlsx");
     }
