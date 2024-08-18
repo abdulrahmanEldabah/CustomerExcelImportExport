@@ -20,6 +20,11 @@ public class CustomerRepository : ICustomerRepository
         _dbContext.Customers.Add(customer);
         await _dbContext.SaveChangesAsync();
     }
+    public async Task AddCustomersAsync(List<Customer> customers)
+    {
+        _dbContext.Customers.AddRange(customers);
+        await _dbContext.SaveChangesAsync();
+    }
 
     // Retrieve a customer by ID
     public async Task<Customer> GetCustomerByIdAsync(int customerId)

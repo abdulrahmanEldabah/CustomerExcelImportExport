@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="AngleSharp.css" Version="0.17.0" />
+    <PackageReference Include="EPPlus" Version="7.2.2" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.8">

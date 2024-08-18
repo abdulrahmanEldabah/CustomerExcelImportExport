@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 
 namespace CustomerExcelImportExportApi
 {
@@ -7,6 +8,7 @@ namespace CustomerExcelImportExportApi
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
             // Add services to the container.
             builder.Services.AddControllers();

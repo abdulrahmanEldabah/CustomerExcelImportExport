@@ -1,14 +1,19 @@
 ﻿using CustomerExcelImportExport.Shared;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.QuickGrid;
+using Microsoft.JSInterop;
 using System;
 using System.Net.Http.Json;
+using System.Reflection.Metadata;
 using static System.Net.WebRequestMethods;
 
 namespace CustomerExcelImportExportWeb;
 
 public partial class CustomerImport
 {
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+
     private Customer customer = new Customer();
     private Customer submittedCustomer;
     PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
@@ -74,4 +79,58 @@ public partial class CustomerImport
             Console.WriteLine($"An error occurred: {ex.Message}");
         }
     }
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            var url = "api/Customer/export"; // The correct API endpoint
+
+            // Request the Excel file from the server
+            var response = await HttpClient.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsByteArrayAsync();
+                var fileName = "customers.xlsx";
+
+                // Use JavaScript Interop to trigger the download
+                await JSRuntime.InvokeVoidAsync("downloadFile", content, fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            }
+            else
+            {
+                Console.WriteLine("Error exporting data.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+        }
+    }
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        if (file != null)
+        {
+            using var stream = file.OpenReadStream();
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+
+            // Send the file to the server for processing
+            var content = new MultipartFormDataContent();
+            content.Add(new ByteArrayContent(memoryStream.ToArray()), "file", file.Name);
+
+            var response = await HttpClient.PostAsync("api/Customer/import", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                LoadCustomer();
+            }
+            else
+            {
+            }
+        }
+    }
+
+
 }
